@@ -13,7 +13,7 @@
 #define STATIC_STACK_SIZE (1 << 16)
 struct SS {
   void *data[STATIC_STACK_SIZE];
-  size_t size;
+  int size;
 };
 /**
  * Initialize the static stack.
@@ -49,8 +49,8 @@ struct LL {
   struct LL *next;
 };
 /**
- * Filter function for linked list find. Returns 1 if the element should be
- * matched.
+ * Filter function for linked list find. Its implementation should return
+ * non-zero value if the element should be matched.
  */
 typedef int (*LL_filtfunc)(void *);
 /**
@@ -58,13 +58,15 @@ typedef int (*LL_filtfunc)(void *);
  */
 struct LL *LL_new(void *data);
 /**
- * Append a new element to the linked list and returns the new created element.
+ * Insert a new element after the linked list and returns the new created
+ * element.
  */
 struct LL *LL_insert(struct LL *linked_list, void *data);
 /**
  * Find an element in the linked list that matches the filter function. If prev
  * is not NULL, it will store the previous element from the found element in
- * it.
+ * it. If not found, it will return NULL and prev will be the last element. If
+ * the found element is the first element, prev will be NULL.
  */
 struct LL *LL_find(struct LL *linked_list, LL_filtfunc filtfunc, struct LL **prev);
 /**
@@ -72,10 +74,10 @@ struct LL *LL_find(struct LL *linked_list, LL_filtfunc filtfunc, struct LL **pre
  */
 void LL_free(struct LL *linked_list);
 /**
- * Write the linked list as an array to the given array. Returns the number of
- * elements written.
+ * Write the data from the linked list as an array to the given array. Returns
+ * the number of elements written.
  */
-size_t LL_array(struct LL *linked_list, void **array);
+int LL_array(struct LL *linked_list, void **array);
 
 struct LL *LL_new(void *data) {
   struct LL *linked_list = malloc(sizeof(struct LL));
@@ -85,7 +87,8 @@ struct LL *LL_new(void *data) {
 }
 
 struct LL *LL_insert(struct LL *linked_list, void *data) {
-  struct LL *new = LL_new(data);
+  struct LL *new = malloc(sizeof(struct LL));
+  new->data = data;
   new->next = linked_list->next;
   linked_list->next = new;
   return new;
@@ -113,8 +116,8 @@ struct LL *LL_find(struct LL *ll, LL_filtfunc filtfunc, struct LL **prev) {
   return NULL;
 }
 
-size_t LL_array(struct LL *ll, void **array) {
-  size_t i = 0;
+int LL_array(struct LL *ll, void **array) {
+  int i = 0;
   while (ll) {
     array[i++] = ll->data;
     ll = ll->next;
@@ -149,7 +152,7 @@ void HT_set(struct HT *hash_table, const char *key, void *data);
  * Get all the keys from the hash table and store them in the given array.
  * Returns the number of keys.
  */
-size_t HT_keys(struct HT *hash_table, char **keys);
+int HT_keys(struct HT *hash_table, char **keys);
 /**
  * Get the data from the hash table with the given key.
  */
@@ -157,7 +160,7 @@ void *HT_get(struct HT *hash_table, const char *key);
 /**
  * Free the hash table. Note that the data is not freed.
  */
-void HT_free(struct HT *hash_table);
+void HT_destroy(struct HT *hash_table);
 /**
  * Closure function for finding an entry by key in the internal linked list.
  * TODO: figure it out hot implementing this closure function.
@@ -169,6 +172,7 @@ int HT_hash(const char *key) {
   for (int i = 0; key[i]; i++) {
     hash = (hash << 5) + key[i];
   }
+  hash = abs(hash);
   return hash % HASH_TABLE_BUCKET_SIZE;
 }
 
@@ -211,15 +215,15 @@ void HT_set(struct HT *hash_table, const char *key, void *data) {
   }
 }
 
-size_t HT_keys(struct HT *hash_table, char **keys) {
-  size_t i = 0;
+int HT_keys(struct HT *hash_table, char **keys) {
+  int i = 0;
   for (int j = 0; j < hash_table->_keys.size; j++) {
     keys[i++] = hash_table->_keys.data[j];
   }
   return i;
 }
 
-void HT_free(struct HT *hash_table) {
+void HT_destroy(struct HT *hash_table) {
   struct LL *ll_bucket, *ll_iter;
   struct HT_entry *entry;
   for (int i = 0; i < HASH_TABLE_BUCKET_SIZE; i++) {
@@ -256,7 +260,7 @@ struct HTTP_Request {
   enum HTTP_Method method;
   char path[HTTP_REQUEST_PATH_MAX_SIZE];
   void *head;
-  size_t headc;
+  int headc;
   FILE *body;
 };
 
@@ -280,7 +284,7 @@ int main() {
   signal(SIGINT, SIGINT_handler);
   int err, server_sck, session_sck, read_size;
   struct sockaddr_in addr;
-  char buf[BUFFER_SIZE], method[16], path[256], proto[16];
+  char method[16], path[256], proto[16];
   socklen_t addrlen;
   if ((server_sck = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
     perror("socket creation failure");
