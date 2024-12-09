@@ -9,9 +9,9 @@
 #include <unistd.h>
 
 // Static stack {{{
-#define STATIC_STACK_SIZE (1 << 16)
+#define STATIC_STACK_MAX_SIZE (1 << 16)
 struct SS {
-  void *data[STATIC_STACK_SIZE];
+  void *data[STATIC_STACK_MAX_SIZE];
   int size;
 };
 /**
@@ -44,7 +44,7 @@ void *SS_peek(struct SS *stack) { return stack->data[stack->size - 1]; }
 
 // Linked List {{{
 struct LL {
-  void *data;
+  void *value;
   struct LL *next;
 };
 /**
@@ -52,6 +52,10 @@ struct LL {
  * non-zero value if the element should be matched.
  */
 typedef int (*LL_filtfunc)(void *);
+/**
+ * Iterator for linked list to iterate through the elements.
+ */
+typedef struct LL **LL_iter;
 /**
  * Create a new linked list with the given data.
  */
@@ -78,17 +82,22 @@ void LL_free(struct LL *linked_list);
  * the number of elements written.
  */
 int LL_array(struct LL *linked_list, void **array);
+/**
+ * Iterate through the linked list and call the given function for each
+ * element and returns the total number of elements iterated.
+ */
+int LL_foreach(struct LL *ll, void (*func)(void *));
 
 struct LL *LL_new(void *data) {
   struct LL *linked_list = malloc(sizeof(struct LL));
-  linked_list->data = data;
+  linked_list->value = data;
   linked_list->next = NULL;
   return linked_list;
 }
 
 struct LL *LL_insert(struct LL *linked_list, void *data) {
   struct LL *new = malloc(sizeof(struct LL));
-  new->data = data;
+  new->value = data;
   new->next = linked_list->next;
   linked_list->next = new;
   return new;
@@ -105,7 +114,7 @@ void LL_free(struct LL *ll) {
 
 struct LL *LL_find(struct LL *ll, LL_filtfunc filtfunc, struct LL **prev) {
   while (ll) {
-    if (filtfunc(ll->data)) {
+    if (filtfunc(ll->value)) {
       return ll;
     }
     if (prev) {
@@ -119,8 +128,20 @@ struct LL *LL_find(struct LL *ll, LL_filtfunc filtfunc, struct LL **prev) {
 int LL_array(struct LL *ll, void **array) {
   int i = 0;
   while (ll) {
-    array[i++] = ll->data;
+    array[i++] = ll->value;
     ll = ll->next;
+  }
+  return i;
+}
+
+int LL_foreach(struct LL *ll, void (*func)(void *)) {
+  int i = 0;
+  while (ll) {
+    if (func != NULL) {
+      func(ll->value);
+    }
+    ll = ll->next;
+    i++;
   }
   return i;
 }
@@ -136,6 +157,7 @@ struct HT_entry {
 struct HT {
   struct LL *bucket[HASH_TABLE_BUCKET_SIZE];
 };
+typedef struct HT_entry *HT_iter;
 /**
  * Hash function for the hash table.
  */
@@ -161,6 +183,10 @@ void *HT_get(struct HT *hash_table, const char *key);
  * Free the hash table. Note that the data is not freed.
  */
 void HT_free(struct HT *hash_table);
+/**
+ * Iterate through the hash table and call the given function for each element.
+ */
+int HT_foreach(struct HT *hash_table, void (*func)(char *, void *));
 
 // WARNING: this is a hacky way to implement the closure function for finding
 // an entry by key. Not thread-safe.
@@ -195,7 +221,7 @@ void *HT_get(struct HT *hash_table, const char *key) {
   struct LL *bucket = hash_table->bucket[hash],
             *entry = LL_find(bucket, _HT_entry_find_by_key_filtfunc(key), NULL);
   if (entry) {
-    return ((struct HT_entry *)entry->data)->value;
+    return ((struct HT_entry *)entry->value)->value;
   }
   return NULL;
 }
@@ -211,7 +237,7 @@ void HT_set(struct HT *hash_table, const char *key, void *data) {
     hash_table->bucket[hash] = LL_new(entry);
   } else if ((ll_entry = LL_find(ll_bucket, _HT_entry_find_by_key_filtfunc(key),
                                  &ll_prev))) {
-    entry = ll_entry->data;
+    entry = ll_entry->value;
     entry->value = data;
   } else {
     entry = malloc(sizeof(struct HT_entry));
@@ -226,7 +252,7 @@ int HT_keys(struct HT *hash_table, char **keys) {
   for (int j = 0; j < HASH_TABLE_BUCKET_SIZE; j++) {
     struct LL *bucket = hash_table->bucket[j];
     while (bucket) {
-      struct HT_entry *entry = bucket->data;
+      struct HT_entry *entry = bucket->value;
       strcpy(keys[i++], entry->key);
       bucket = bucket->next;
     }
@@ -241,8 +267,7 @@ void HT_free(struct HT *hash_table) {
     ll_bucket = hash_table->bucket[i];
     ll_iter = ll_bucket;
     while (ll_iter) {
-      entry = ll_iter->data;
-      free(entry->key);
+      entry = ll_iter->value;
       free(entry);
       ll_iter = ll_iter->next;
     }
@@ -250,10 +275,30 @@ void HT_free(struct HT *hash_table) {
   }
 }
 
+int HT_foreach(struct HT *hash_table, void (*func)(char *, void *)) {
+  int i = 0;
+  for (int j = 0; j < HASH_TABLE_BUCKET_SIZE; j++) {
+    struct LL *bucket = hash_table->bucket[j];
+    while (bucket) {
+      struct HT_entry *entry = bucket->value;
+      if (func != NULL) {
+        func(entry->key, entry->value);
+      }
+      bucket = bucket->next;
+      i++;
+    }
+  }
+  return i;
+}
 // }}}
 
 // Http {{{
 #define HTTP_REQUEST_PATH_MAX_SIZE (1 << 8)
+
+#define HTTP_HEADER_MAX_COUNT (1 << 8)
+#define HTTP_HEADER_KEY_MAX_SIZE (1 << 8)
+#define HTTP_HEADER_VALUE_MAX_SIZE (1 << 8)
+
 #define HTTP_SERVER_PORT atoi(getenv("HTTP_SERVER_PORT"))
 enum HTTP_Method {
   HTTP_METHOD_GET,
@@ -267,17 +312,26 @@ enum HTTP_Method {
   HTTP_METHOD_TRACE
 };
 
+struct HTTP_Header {
+  char key[HTTP_HEADER_KEY_MAX_SIZE];
+  char value[HTTP_HEADER_VALUE_MAX_SIZE];
+};
+
 struct HTTP_Request {
   enum HTTP_Method method;
   char path[HTTP_REQUEST_PATH_MAX_SIZE];
-  void *head;
+  struct HTTP_Header head[HTTP_HEADER_MAX_COUNT];
   int headc;
   FILE *body;
 };
 
+char *HTTP_header(struct HTTP_Request *req, const char *key,
+                  const char *defval);
+
 struct HTTP_Response {
   int status;
-  void *headers;
+  struct HTTP_Header head[HTTP_HEADER_MAX_COUNT];
+  int headc;
   FILE *body;
 };
 
