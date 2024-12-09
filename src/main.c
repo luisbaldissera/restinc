@@ -135,7 +135,6 @@ struct HT_entry {
 };
 struct HT {
   struct LL *bucket[HASH_TABLE_BUCKET_SIZE];
-  struct SS _keys;
 };
 /**
  * Hash function for the hash table.
@@ -186,7 +185,6 @@ int HT_hash(const char *key) {
 }
 
 void HT_init(struct HT *hash_table) {
-  SS_init(&hash_table->_keys);
   for (int i = 0; i < HASH_TABLE_BUCKET_SIZE; i++) {
     hash_table->bucket[i] = NULL;
   }
@@ -209,7 +207,6 @@ void HT_set(struct HT *hash_table, const char *key, void *data) {
   if (!ll_bucket) {
     entry = malloc(sizeof(struct HT_entry));
     strcpy(entry->key, key);
-    SS_push(&hash_table->_keys, entry->key);
     entry->value = data;
     hash_table->bucket[hash] = LL_new(entry);
   } else if ((ll_entry = LL_find(ll_bucket, _HT_entry_find_by_key_filtfunc(key),
@@ -219,7 +216,6 @@ void HT_set(struct HT *hash_table, const char *key, void *data) {
   } else {
     entry = malloc(sizeof(struct HT_entry));
     strcpy(entry->key, key);
-    SS_push(&hash_table->_keys, entry->key);
     entry->value = data;
     LL_insert(ll_prev, data);
   }
@@ -227,8 +223,13 @@ void HT_set(struct HT *hash_table, const char *key, void *data) {
 
 int HT_keys(struct HT *hash_table, char **keys) {
   int i = 0;
-  for (int j = 0; j < hash_table->_keys.size; j++) {
-    keys[i++] = hash_table->_keys.data[j];
+  for (int j = 0; j < HASH_TABLE_BUCKET_SIZE; j++) {
+    struct LL *bucket = hash_table->bucket[j];
+    while (bucket) {
+      struct HT_entry *entry = bucket->data;
+      strcpy(keys[i++], entry->key);
+      bucket = bucket->next;
+    }
   }
   return i;
 }
