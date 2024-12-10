@@ -1,4 +1,6 @@
 #include "datastructure.h"
+#include <stdlib.h>
+#include <string.h>
 
 
 // Static Stack {{{
