@@ -1,94 +1,12 @@
-#include "datastructure.h"
+#include "hashtable.h"
+
+#include "linkedlist.h"
 #include <stdlib.h>
 #include <string.h>
 
-
-// Static Stack {{{
-#define STATIC_STACK_MAX_SIZE (1 << 16)
-struct SS {
-  void *data[STATIC_STACK_MAX_SIZE];
-  int size;
-};
-
-void SS_init(struct SS *stack) { stack->size = 0; }
-
-void SS_push(struct SS *stack, void *data) {
-  stack->data[stack->size++] = data;
-}
-
-void *SS_pop(struct SS *stack) { return stack->data[--stack->size]; }
-
-void *SS_peek(struct SS *stack) { return stack->data[stack->size - 1]; }
-// }}} END Static Stack
-
-// Linked List {{{
-struct LL {
-  void *value;
-  struct LL *next;
-};
-
-struct LL *LL_new(void *data) {
-  struct LL *linked_list = malloc(sizeof(struct LL));
-  linked_list->value = data;
-  linked_list->next = NULL;
-  return linked_list;
-}
-
-struct LL *LL_insert(struct LL *linked_list, void *data) {
-  struct LL *new = malloc(sizeof(struct LL));
-  new->value = data;
-  new->next = linked_list->next;
-  linked_list->next = new;
-  return new;
-}
-
-void LL_free(struct LL *ll) {
-  struct LL *next;
-  while (ll) {
-    next = ll->next;
-    free(ll);
-    ll = next;
-  }
-}
-
-struct LL *LL_find(struct LL *ll, LL_filtfunc filtfunc, struct LL **prev) {
-  while (ll) {
-    if (filtfunc(ll->value)) {
-      return ll;
-    }
-    if (prev) {
-      *prev = ll;
-    }
-    ll = ll->next;
-  }
-  return NULL;
-}
-
-int LL_array(struct LL *ll, void **array) {
-  int i = 0;
-  while (ll) {
-    array[i++] = ll->value;
-    ll = ll->next;
-  }
-  return i;
-}
-
-int LL_foreach(struct LL *ll, void (*func)(void *)) {
-  int i = 0;
-  while (ll) {
-    if (func != NULL) {
-      func(ll->value);
-    }
-    ll = ll->next;
-    i++;
-  }
-  return i;
-}
-// }}} END Linked List
-
-// Hash Table {{{
 #define HASH_TABLE_BUCKET_SIZE (1 << 8)
 #define HASH_TABLE_KEY_MAX_SIZE (1 << 8)
+
 struct HT_entry {
   char key[HASH_TABLE_KEY_MAX_SIZE];
   void *value;
@@ -130,7 +48,7 @@ void *HT_get(struct HT *hash_table, const char *key) {
   struct LL *bucket = hash_table->bucket[hash],
             *entry = LL_find(bucket, _HT_entry_find_by_key_filtfunc(key), NULL);
   if (entry) {
-    return ((struct HT_entry *)entry->value)->value;
+    return ((struct HT_entry *) LL_value(entry))->value;
   }
   return NULL;
 }
@@ -146,7 +64,7 @@ void HT_set(struct HT *hash_table, const char *key, void *data) {
     hash_table->bucket[hash] = LL_new(entry);
   } else if ((ll_entry = LL_find(ll_bucket, _HT_entry_find_by_key_filtfunc(key),
                                  &ll_prev))) {
-    entry = ll_entry->value;
+    entry = LL_value(ll_entry);
     entry->value = data;
   } else {
     entry = malloc(sizeof(struct HT_entry));
@@ -161,9 +79,9 @@ int HT_keys(struct HT *hash_table, char **keys) {
   for (int j = 0; j < HASH_TABLE_BUCKET_SIZE; j++) {
     struct LL *bucket = hash_table->bucket[j];
     while (bucket) {
-      struct HT_entry *entry = bucket->value;
+      struct HT_entry *entry = LL_value(bucket);
       strcpy(keys[i++], entry->key);
-      bucket = bucket->next;
+      bucket = LL_next(bucket);
     }
   }
   return i;
@@ -176,9 +94,9 @@ void HT_free(struct HT *hash_table) {
     ll_bucket = hash_table->bucket[i];
     ll_iter = ll_bucket;
     while (ll_iter) {
-      entry = ll_iter->value;
+      entry = LL_value(ll_iter);
       free(entry);
-      ll_iter = ll_iter->next;
+      ll_iter = LL_next(ll_iter);
     }
     LL_free(ll_bucket);
   }
@@ -189,15 +107,14 @@ int HT_foreach(struct HT *hash_table, void (*func)(char *, void *)) {
   for (int j = 0; j < HASH_TABLE_BUCKET_SIZE; j++) {
     struct LL *bucket = hash_table->bucket[j];
     while (bucket) {
-      struct HT_entry *entry = bucket->value;
+      struct HT_entry *entry = LL_value(bucket);
       if (func != NULL) {
         func(entry->key, entry->value);
       }
-      bucket = bucket->next;
+      bucket = LL_next(bucket);
       i++;
     }
   }
   return i;
 }
 
-// vim: fdm=marker
