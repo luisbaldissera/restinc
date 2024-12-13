@@ -1,5 +1,5 @@
-#ifndef HASHTABLE_H
-#define HASHTABLE_H
+#ifndef RESTIN_HASHTABLE_H
+#define RESTIN_HASHTABLE_H
 
 struct HT;
 /**
@@ -32,4 +32,4 @@ void HT_free(struct HT *hash_table);
  */
 int HT_foreach(struct HT *hash_table, void (*func)(char *, void *));
 
-#endif // HASHTABLE_H
+#endif // RESTIN_HASHTABLE_H

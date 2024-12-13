@@ -1,5 +1,5 @@
-#ifndef STATICSTACK_H
-#define STATICSTACK_H
+#ifndef RESTIN_STATICSTACK_H
+#define RESTIN_STATICSTACK_H
 
 struct SS;
 /**
@@ -23,4 +23,4 @@ void *SS_peek(struct SS *stack);
  */
 int SS_size(struct SS *stack);
 
-#endif // STATICSTACK_H
+#endif // RESTIN_STATICSTACK_H

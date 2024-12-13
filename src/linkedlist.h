@@ -1,5 +1,5 @@
-#ifndef LINKEDLIST_H
-#define LINKEDLIST_H
+#ifndef RESTIN_LINKEDLIST_H
+#define RESTIN_LINKEDLIST_H
 
 struct LL;
 /**
@@ -47,4 +47,4 @@ struct LL * LL_next(struct LL *ll);
  */
 void *LL_value(struct LL *ll);
 
-#endif // LINKEDLIST_H
+#endif // RESTIN_LINKEDLIST_H
