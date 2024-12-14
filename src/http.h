@@ -86,7 +86,13 @@ struct HTTPRequest;
 struct HTTPResponse;
 
 /**
- * Represents a HTTP handler. It receives a request and a response pointers.
+ * Creates a new request.
+ */
+struct HTTPRequest * HTTPRequest_new();
+/**
+ * Represents a HTTP handler. It receives a request and a response pointers. A
+ * handler should return 0 if the request was handled successfully, of the
+ * error code otherwise.
  */
 typedef int (*HTTPHandler)(struct HTTPRequest *, struct HTTPResponse *);
 
@@ -95,55 +101,72 @@ typedef int (*HTTPHandler)(struct HTTPRequest *, struct HTTPResponse *);
  * returns HTTP_UNKNOWN.
  */
 enum HTTPMethod HTTP_method(const char *method);
-
 /**
  * Returns the string representation of an HTTP method. If the method is not a
  * valid HTTP method, it returns NULL.
  */
-const char *HTTPMethod_message(enum HTTPMethod method);
-
+const char *HTTPMethod_word(enum HTTPMethod method);
 /**
  * Returns the message for a given HTTP status. If the status is not a valid,
  * it returns NULL.
  */
 const char *HTTPStatus_message(int status);
-
 /**
  * Retrieves the method from the request.
  */
 enum HTTPMethod HTTPRequest_method(struct HTTPRequest *req);
-
 /**
  * Retrieves the path from the request.
  */
 const char *HTTPRequest_path(struct HTTPRequest *req);
-
 /**
  * Retrieves a file pointer to read the body of the request.
  */
 FILE *HTTPRequest_fbody(struct HTTPRequest *req);
-
 /**
  * Retrieves the value of a header from the request. If the header is not
  * found, it returns NULL.
  */
 const char *HTTPRequest_getheader(struct HTTPRequest *req, const char *key);
-
+/**
+ * Write the headers keys in the given array of strings and returns the total
+ * number of keys in the headers.
+ */
+int HTTPRequest_headers(struct HTTPRequest *req, char **keys);
 /**
  * Reads the request from a file pointer and stores it in the request struct.
  * Returns 1 if the request was read successfully, 0 otherwise.
  */
 int HTTPRequest_fscan(FILE *in, struct HTTPRequest *req);
-
 /**
  * Reads the request from a string and stores it in the request struct. Returns
  * 1 if the request was read successfully, 0 otherwise.
  */
 int HTTPRequest_sscan(const char *in, struct HTTPRequest *req);
+/**
+ * Frees the request.
+ */
+void HTTPRequest_free(struct HTTPRequest *req);
 
+/**
+ * Creates a new response.
+ */
+struct HTTPResponse * HTTPResponse_new();
 /**
  * Retrieves the status from the response.
  */
 enum HTTPStatus HTTPResponse_status(struct HTTPResponse *resp);
+/**
+ * Sets the status of the response.
+ */
+void HTTPResponse_setstatus(struct HTTPResponse *resp, enum HTTPStatus status);
+/**
+ * Returns the pointer to the file to write the body of the response.
+ */
+FILE *HTTPResponse_body(struct HTTPResponse *resp);
+/**
+ * Frees the response.
+ */
+void HTTPResponse_free(struct HTTPResponse *resp);
 
 #endif // RESTIN_HTTP_H

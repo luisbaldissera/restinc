@@ -9,6 +9,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include "http.h"
+#include "json.h"
+
 // Http {{{
 #define HTTP_REQUEST_PATH_MAX_SIZE (1 << 8)
 
@@ -18,37 +21,11 @@
 
 #define HTTP_SERVER_PORT atoi(getenv("HTTP_SERVER_PORT"))
 
-struct HHeader {
-  char key[HTTP_HEADER_KEY_MAX_SIZE];
-  char value[HTTP_HEADER_VALUE_MAX_SIZE];
-};
-
-struct HReq {
-  char path[HTTP_REQUEST_PATH_MAX_SIZE];
-  struct HHeader head[HTTP_HEADER_MAX_COUNT];
-  int headc;
-  FILE *body;
-};
-
-char *HTTP_header(struct HReq *req, const char *key, const char *defval);
-
-struct HResp {
-  int status;
-  struct HHeader head[HTTP_HEADER_MAX_COUNT];
-  int headc;
-  FILE *body;
-};
-
-void HTTP_handle(struct HReq *req, struct HResp *resp);
-
-// }}}
-
 // Server {{{
 static volatile sig_atomic_t stop_server = 0;
 void SIGINT_handler(int _);
-void handle_request(FILE *req, FILE *resp);
-void HReq_read(struct HReq *req, FILE *in);
-void HResp_write(struct HResp *resp, FILE *out);
+void handle_request(FILE *req, FILE *resp, HTTPHandler handler);
+int http_echo_request_as_json(struct HTTPRequest *req, struct HTTPResponse *resp);
 
 int main() {
   char str[256];
@@ -81,7 +58,7 @@ int main() {
               accept(server_sck, (struct sockaddr *)&addr, &addrlen)) >= 0) {
     FILE *req = fdopen(session_sck, "r");
     FILE *resp = fdopen(session_sck, "a");
-    handle_request(req, resp);
+    handle_request(req, resp, http_echo_request_as_json);
     fflush(resp);
     fclose(req);
     fclose(resp);
@@ -91,104 +68,43 @@ int main() {
   close(server_sck);
 }
 
-void handle_request(FILE *req, FILE *resp) {
-  char respbody[32];
-  struct HReq http_req;
-  struct HResp http_resp;
-  HReq_read(&http_req, req);
-  http_resp.body = fmemopen(respbody, sizeof(respbody), "a+");
-  HTTP_handle(&http_req, &http_resp);
-  fflush(http_resp.body);
-  HResp_write(&http_resp, resp);
-  fclose(http_resp.body);
+int http_echo_request_as_json(struct HTTPRequest *req, struct HTTPResponse *resp) {
+  int header_count;
+  char *header_keys[100];
+  const char *path = HTTPRequest_path(req),
+             *method = HTTPMethod_word(HTTPRequest_method(req));
+  struct JSON *req_json = JSON_object(), *headers_json = JSON_object();
+  JSON_object_set(req_json, "path", JSON_string(path));
+  JSON_object_set(req_json, "method", JSON_string(method));
+  header_count = HTTPRequest_headers(req, header_keys);
+  for (int i = 0; i < header_count; i++) {
+    const char *header_key = header_keys[i];
+    const char *header_value = HTTPRequest_getheader(req, header_key);
+    JSON_object_set(headers_json, header_key, JSON_string(header_value));
+  }
+  JSON_object_set(req_json, "headers", headers_json);
+  FILE *resp_body = HTTPResponse_body(resp);
+  HTTPResponse_setstatus(resp, HTTP_OK);
+  JSON_fwrite(req_json, resp_body);
+  fflush(resp_body);
+  JSON_free(req_json);
+  return 0;
 }
 
-const char *HTTP_status_message(int status) {
-  switch (status) {
-  case 200:
-    return "OK";
-  case 201:
-    return "Created";
-  case 202:
-    return "Accepted";
-  case 204:
-    return "No Content";
-  case 400:
-    return "Bad Request";
-  case 401:
-    return "Unauthorized";
-  case 403:
-    return "Forbidden";
-  case 404:
-    return "Not Found";
-  case 405:
-    return "Method Not Allowed";
-  case 500:
-    return "Internal Server Error";
-  case 501:
-    return "Not Implemented";
-  case 503:
-    return "Service Unavailable";
+void handle_request(FILE *req, FILE *resp, HTTPHandler handler) {
+  struct HTTPRequest *http_req = HTTPRequest_new();
+  struct HTTPResponse *httpr_resp = HTTPResponse_new();
+  if (!HTTPRequest_fscan(req, http_req)) {
+    HTTPResponse_setstatus(httpr_resp, HTTP_BAD_REQUEST);
+    return;
   }
-  return "OK";
-}
-
-void HReq_print(struct HReq *req, FILE *out) {
-  fprintf(out, "path: %s\n", req->path);
-  fprintf(out, "headc: %i\n", req->headc);
-  for (int i = 0; i < req->headc; i++) {
-    fprintf(out, "head[%i]: %s: %s\n", i, req->head[i].key, req->head[i].value);
+  int err = handler(http_req, httpr_resp);
+  if (err) {
+    HTTPResponse_setstatus(httpr_resp, HTTP_INTERNAL_SERVER_ERROR);
+    return;
   }
-  fprintf(out, "body: %p\n", req->body);
-}
-
-void HReq_read(struct HReq *req, FILE *in) {
-  char method[16], path[256], proto[16];
-  fscanf(in, "%s %s %s\r\n", method, path, proto);
-  strcpy(req->path, path);
-  req->headc = 0;
-  fflush(in);
-  char key[HTTP_HEADER_KEY_MAX_SIZE], val[HTTP_HEADER_VALUE_MAX_SIZE];
-  while (fscanf(in, "%[^:]: %s\r\n", key, val) == 2) {
-    fflush(in);
-    for (int i = 0; key[i]; i++) {
-      key[i] = tolower(key[i]);
-    }
-    strcpy(req->head[req->headc].key, key);
-    strcpy(req->head[req->headc].value, val);
-    req->headc++;
-  }
-  if (fscanf(in, "\n") == EOF) {
-    req->body = NULL;
-  } else {
-    req->body = in;
-  }
-}
-
-void HResp_write(struct HResp *resp, FILE *out) {
-  fprintf(out, "HTTP/1.1 %i %s\r\n", resp->status,
-          HTTP_status_message(resp->status));
-  for (int i = 0; i < resp->headc; i++) {
-    fprintf(out, "%s: %s\r\n", resp->head[i].key, resp->head[i].value);
-  }
-  fprintf(out, "\r\n");
-  if (resp->body) {
-    char buf[1 << 8];
-    while (fgets(buf, sizeof(buf), resp->body)) {
-      fprintf(out, "%s", buf);
-    }
-  }
-  fflush(out);
-}
-
-void HTTP_handle(struct HReq *req, struct HResp *resp) {
-  resp->status = 200;
-  strcpy(resp->head[resp->headc].key, "x-response-header");
-  strcpy(resp->head[resp->headc].value, "response-value");
-  resp->headc = 1;
-  HReq_print(req, stdout);
-  HReq_print(req, resp->body);
-  fflush(resp->body);
+  HTTPRequest_free(http_req);
+  HTTPResponse_free(httpr_resp);
 }
 
 void SIGINT_handler(int _) {

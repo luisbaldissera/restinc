@@ -2,6 +2,11 @@
 #define RESTIN_HASHTABLE_H
 
 struct HT;
+
+/**
+ * Creates a new hash table.
+ */
+struct HT *HT_new();
 /**
  * Hash function for the hash table.
  */
