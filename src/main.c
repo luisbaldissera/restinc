@@ -73,7 +73,7 @@ int http_echo_request_as_json(struct HTTPRequest *req, struct HTTPResponse *resp
   char *header_keys[100];
   const char *path = HTTPRequest_path(req),
              *method = HTTPMethod_word(HTTPRequest_method(req));
-  struct JSON *req_json = JSON_object(), *headers_json = JSON_object();
+  JSON req_json = JSON_object(), headers_json = JSON_object();
   JSON_object_set(req_json, "path", JSON_string(path));
   JSON_object_set(req_json, "method", JSON_string(method));
   header_count = HTTPRequest_headers(req, header_keys);
