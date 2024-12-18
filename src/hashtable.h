@@ -29,9 +29,10 @@ int HT_keys(struct HT *hash_table, char **keys);
  */
 void *HT_get(struct HT *hash_table, const char *key);
 /**
- * Free the hash table. Note that the data is not freed.
+ * Free the hash table indexes. Note that the data is not freed. if self is
+ * non-zero, the hash table itself is freed.
  */
-void HT_free(struct HT *hash_table);
+void HT_free(struct HT *hash_table, int self);
 /**
  * Iterate through the hash table and call the given function for each element.
  */

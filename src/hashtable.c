@@ -28,6 +28,12 @@ LL_filtfunc _HT_entry_find_by_key_filtfunc(const char *key) {
 }
 // END WARNING
 
+struct HT *HT_new() {
+  struct HT *hash_table = malloc(sizeof(struct HT));
+  HT_init(hash_table);
+  return hash_table;
+}
+
 int HT_hash(const char *key) {
   int hash = 0;
   for (int i = 0; key[i]; i++) {
@@ -87,7 +93,7 @@ int HT_keys(struct HT *hash_table, char **keys) {
   return i;
 }
 
-void HT_free(struct HT *hash_table) {
+void HT_free(struct HT *hash_table, int self) {
   struct LL *ll_bucket, *ll_iter;
   struct HT_entry *entry;
   for (int i = 0; i < HASH_TABLE_BUCKET_SIZE; i++) {
@@ -98,7 +104,12 @@ void HT_free(struct HT *hash_table) {
       free(entry);
       ll_iter = LL_next(ll_iter);
     }
-    LL_free(ll_bucket);
+    if (ll_bucket) {
+      LL_free(ll_bucket);
+    }
+  }
+  if (self) {
+    free(hash_table);
   }
 }
 
