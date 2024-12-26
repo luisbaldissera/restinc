@@ -1,3 +1,5 @@
+#if PROFILE == prod || PROFILE == dev
+
 #include <ctype.h>
 #include <fcntl.h>
 #include <netdb.h>
@@ -117,5 +119,7 @@ void SIGINT_handler(int _) {
 }
 
 // }}}
+
+#endif
 
 // vim: fdm=marker

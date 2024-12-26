@@ -1,6 +1,10 @@
 #ifndef RESTIN_STATICSTACK_H
 #define RESTIN_STATICSTACK_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct SS;
 /**
  * Initialize the static stack.
@@ -22,5 +26,9 @@ void *SS_peek(struct SS *stack);
  * Get the size of the static stack.
  */
 int SS_size(struct SS *stack);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RESTIN_STATICSTACK_H

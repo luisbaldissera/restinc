@@ -1,6 +1,10 @@
 #ifndef RESTIN_JSON_H
 #define RESTIN_JSON_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
 
 struct __JSON_struct;
@@ -74,5 +78,9 @@ JSON JSON_patch_diff(JSON a, JSON b);
 JSON JSON_patch_apply(JSON a, JSON patch);
 int JSON_cmp(JSON a, JSON b);
 void JSON_free(JSON node);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RESTIN_JSON_H

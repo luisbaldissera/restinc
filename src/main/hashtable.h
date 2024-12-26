@@ -1,6 +1,10 @@
 #ifndef RESTIN_HASHTABLE_H
 #define RESTIN_HASHTABLE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct HT;
 
 /**
@@ -37,5 +41,9 @@ void HT_free(struct HT *hash_table, int self);
  * Iterate through the hash table and call the given function for each element.
  */
 int HT_foreach(struct HT *hash_table, void (*func)(char *, void *));
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RESTIN_HASHTABLE_H

@@ -1,7 +1,14 @@
 #ifndef RESTIN_HTTP_H
 #define RESTIN_HTTP_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdio.h>
+
+#define HTTP_REQUEST_PATH_MAX_SIZE (1 << 8)
+#define HTTP_HEADER_MAX_COUNT (1 << 8)
 
 enum HTTPMethod {
   HTTP_METHOD_UNKNOWN,
@@ -147,7 +154,6 @@ int HTTPRequest_sscan(const char *in, struct HTTPRequest *req);
  * Frees the request.
  */
 void HTTPRequest_free(struct HTTPRequest *req);
-
 /**
  * Creates a new response.
  */
@@ -168,5 +174,9 @@ FILE *HTTPResponse_body(struct HTTPResponse *resp);
  * Frees the response.
  */
 void HTTPResponse_free(struct HTTPResponse *resp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RESTIN_HTTP_H

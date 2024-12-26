@@ -1,35 +1,43 @@
-TARGET_EXEC ?= a.out
+CC := clang
+MKDIR_P ?= mkdir -p
 
-BUILD_DIR ?= ./build
-SRC_DIRS ?= ./src
+SRV_TARGET  ?= server.o
+TEST_TARGET ?= test.o
+BUILD_DIR   ?= ./build
+SRC_DIRS    ?= ./src/test ./src/main
+CSRC        := $(shell find $(SRC_DIRS) -name *.c)
+CPPSRC      := $(shell find $(SRC_DIRS) -name *.cpp)
+ASMSRC      := $(shell find $(SRC_DIRS) -name *.s)
+SRCS        := $(CSRC) $(CPPSRC) $(ASMSRC)
+OBJS        := $(CSRC:./src/%.c=$(BUILD_DIR)/%.o)   \
+							 $(CPPSRC:./src/%.cpp=$(BUILD_DIR)/%.o) \
+							 $(ASMSRC:./src/%.s=$(BUILD_DIR)/%.o)
+INC_DIRS    := $(shell find $(SRC_DIRS) -type d)
+INC_FLAGS   := $(addprefix -I,$(INC_DIRS))
+CPPFLAGS    := $(CPPFLAGS) $(INC_FLAGS) -MMD -MP
 
-SRCS := $(shell find $(SRC_DIRS) -name *.cpp -or -name *.c -or -name *.s)
-OBJS := $(SRCS:%=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 
-INC_DIRS := $(shell find $(SRC_DIRS) -type d)
-INC_FLAGS := $(addprefix -I,$(INC_DIRS))
+$(BUILD_DIR)/$(TEST_TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
-CPPFLAGS ?= $(INC_FLAGS) -MMD -MP
-
-$(BUILD_DIR)/$(TARGET_EXEC): $(OBJS)
+$(BUILD_DIR)/$(SRV_TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
 # assembly
-$(BUILD_DIR)/%.s.o: %.s
+$(BUILD_DIR)/%.o: ./src/%.s
 	$(MKDIR_P) $(dir $@)
 	$(AS) $(ASFLAGS) -c $< -o $@
 
 # c source
-$(BUILD_DIR)/%.c.o: %.c
+$(BUILD_DIR)/%.o: ./src/%.c
 	$(MKDIR_P) $(dir $@)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 # c++ source
-$(BUILD_DIR)/%.cpp.o: %.cpp
+$(BUILD_DIR)/%.o: ./src/%.cpp
 	$(MKDIR_P) $(dir $@)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -c $< -o $@
-
 
 .PHONY: clean
 
@@ -37,5 +45,3 @@ clean:
 	$(RM) -r $(BUILD_DIR)
 
 -include $(DEPS)
-
-MKDIR_P ?= mkdir -p

@@ -1,6 +1,10 @@
 #ifndef RESTIN_LINKEDLIST_H
 #define RESTIN_LINKEDLIST_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct LL;
 /**
  * Filter function for linked list find. Its implementation should return
@@ -38,7 +42,7 @@ int LL_array(struct LL *linked_list, void **array);
  * element and returns the total number of elements iterated.
  */
 int LL_foreach(struct LL *ll, void (*func)(void *));
-/**
+/** 
  * Get the next element in the linked list.
  */
 struct LL * LL_next(struct LL *ll);
@@ -46,5 +50,9 @@ struct LL * LL_next(struct LL *ll);
  * Get the value of the linked list element.
  */
 void *LL_value(struct LL *ll);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // RESTIN_LINKEDLIST_H

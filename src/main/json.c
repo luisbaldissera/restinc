@@ -103,3 +103,52 @@ void JSON_array_push(JSON array, JSON value) {
     array->value.array.last = LL_insert(array->value.array.last, value);
   }
 }
+
+int JSON_fwrite(JSON node, FILE *out) {
+  if (node->type == JSON_DECIMAL) {
+    return fprintf(out, "%f", node->value.decimal);
+  } else if (node->type == JSON_INTEGER) {
+    return fprintf(out, "%d", node->value.integer);
+  } else if (node->type == JSON_STRING) {
+    return fprintf(out, "\"%s\"", node->value.string);
+  } else if (node->type == JSON_ARRAY) {
+    fprintf(out, "[");
+    struct LL *current = node->value.array.first;
+    while (current != NULL) {
+      JSON_fwrite(LL_value(current), out);
+      current = LL_next(current);
+      if (current != NULL) {
+        fprintf(out, ",");
+      }
+    }
+    fprintf(out, "]");
+  } else if (node->type == JSON_OBJECT) {
+    fprintf(out, "{");
+    char *keys[9999];
+    int size = HT_keys(node->value.object, keys);
+    for (int i = 0; i < size; i++) {
+      fprintf(out, "\"%s\":", keys[i]);
+      JSON_fwrite(HT_get(node->value.object, keys[i]), out);
+      if (i < size - 1) {
+        fprintf(out, ",");
+      }
+    }
+    fprintf(out, "}");
+  }
+  return 0;
+}
+
+void __JSON_HT_free(char *key, void *value) { JSON_free(value); }
+void __JSON_LL_free(void *value) { JSON_free(value); }
+void JSON_free(JSON json) {
+  if (json->type == JSON_STRING) {
+    free(json->value.string);
+  } else if (json->type == JSON_ARRAY) {
+    LL_foreach(json->value.array.first, __JSON_LL_free);
+    LL_free(json->value.array.first);
+  } else if (json->type == JSON_OBJECT) {
+    HT_foreach(json->value.object, __JSON_HT_free);
+    HT_free(json->value.object, 1);
+  }
+  free(json);
+}
