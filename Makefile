@@ -1,4 +1,5 @@
 CC := clang
+DOCGEN := clang-doc
 MKDIR_P ?= mkdir -p
 
 SRV_TARGET  ?= server.o
