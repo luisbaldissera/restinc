@@ -1,4 +1,5 @@
 CompileFlags:
   Add:
-    - -I=./src/main
-    - -I=./src/test
+    - -Isrc/test
+    - -Isrc/main
+    - -DPROFILE=1
