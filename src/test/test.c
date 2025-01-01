@@ -5,6 +5,12 @@
 
 struct HT *__all_tests = NULL;
 
+#if PROFILE == 1
+int main(int argc, char **argv) {
+  return TEST_runall();
+}
+#endif
+
 int TEST_register(const char *casedesc, TESTCase testcase) {
   if (__all_tests == NULL) {
     __all_tests = HT_new();
@@ -22,6 +28,7 @@ int TEST_runcase(const char *casedesc) {
 }
 
 int TEST_runall() {
+  printf("Running all test cases...\n");
   char *keys[MAX_TEST_CASES];
   int keysc = HT_keys(__all_tests, keys);
   for (int i = 0; i < keysc; i++) {

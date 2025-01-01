@@ -18,10 +18,18 @@ CPPFLAGS    := $(CPPFLAGS) $(INC_FLAGS) -MMD -MP
 
 DEPS := $(OBJS:.o=.d)
 
-$(BUILD_DIR)/$(TEST_TARGET): $(OBJS)
-	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+# Profiles
+# 0: Server
+# 1: Test
+PROFILE     ?= 0
+CFLAGS      += -DPROFILE=$(PROFILE)
+
+all: $(BUILD_DIR)/$(SRV_TARGET) $(BUILD_DIR)/$(TEST_TARGET)
 
 $(BUILD_DIR)/$(SRV_TARGET): $(OBJS)
+	$(CC) $(OBJS) -o $@ $(LDFLAGS)
+
+$(BUILD_DIR)/$(TEST_TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $@ $(LDFLAGS)
 
 # assembly

@@ -29,6 +29,7 @@ void SIGINT_handler(int _);
 void handle_request(FILE *req, FILE *resp, HTTPHandler handler);
 int http_echo_request_as_json(struct HTTPRequest *req, struct HTTPResponse *resp);
 
+#if PROFILE == 0
 int main() {
   char str[256];
   const char *test = str;
@@ -69,6 +70,7 @@ int main() {
   perror("server exited");
   close(server_sck);
 }
+#endif
 
 int http_echo_request_as_json(struct HTTPRequest *req, struct HTTPResponse *resp) {
   int header_count;
