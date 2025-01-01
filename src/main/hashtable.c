@@ -59,7 +59,7 @@ void *HT_get(struct HT *hash_table, const char *key) {
   return NULL;
 }
 
-void HT_set(struct HT *hash_table, const char *key, void *data) {
+int HT_set(struct HT *hash_table, const char *key, void *data) {
   int hash = HT_hash(key);
   struct LL *ll_bucket = hash_table->bucket[hash], *ll_prev, *ll_entry;
   struct HT_entry *entry;
@@ -68,15 +68,18 @@ void HT_set(struct HT *hash_table, const char *key, void *data) {
     strcpy(entry->key, key);
     entry->value = data;
     hash_table->bucket[hash] = LL_new(entry);
+    return 1;
   } else if ((ll_entry = LL_find(ll_bucket, _HT_entry_find_by_key_filtfunc(key),
                                  &ll_prev))) {
     entry = LL_value(ll_entry);
     entry->value = data;
+    return 0;
   } else {
     entry = malloc(sizeof(struct HT_entry));
     strcpy(entry->key, key);
     entry->value = data;
     LL_insert(ll_prev, data);
+    return 1;
   }
 }
 

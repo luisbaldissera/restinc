@@ -20,9 +20,9 @@ int HT_hash(const char *key);
  */
 void HT_init(struct HT *hash_table);
 /**
- * Set a key in the hash table with the given data.
+ * Set a key in the hash table with the given data. Returns 1 if the key is new and 0 if it is updated.
  */
-void HT_set(struct HT *hash_table, const char *key, void *data);
+int HT_set(struct HT *hash_table, const char *key, void *data);
 /**
  * Get all the keys from the hash table and store them in the given array.
  * Returns the number of keys.

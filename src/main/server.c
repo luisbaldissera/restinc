@@ -1,4 +1,4 @@
-#if PROFILE == prod || PROFILE == dev
+#if PROFILE == 0
 
 #include <ctype.h>
 #include <fcntl.h>
